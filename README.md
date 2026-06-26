@@ -1,15 +1,25 @@
-<h1>🧾 Stellar Receipt</h1>
+<p align="center">
+  <img src="docs/logo.svg" alt="Stellar Receipt" width="96" />
+</p>
 
-Tamper-proof on-chain invoices &amp; receipts, powered by Soroban.
+<h1 align="center">Stellar Receipt</h1>
 
-![build](https://img.shields.io/badge/build-passing-brightgreen)
-![network](https://img.shields.io/badge/network-testnet-3b82f6)
-![contract](https://img.shields.io/badge/contract-deployed-10b981)
-![license](https://img.shields.io/badge/license-MIT-lightgrey)
+<p align="center">Tamper-proof on-chain invoices &amp; receipts, powered by Soroban.</p>
 
-**Live demo → https://stellar-receipt.vercel.app**
+<p align="center">
+  <img src="https://img.shields.io/badge/build-passing-brightgreen" alt="build" />
+  <img src="https://img.shields.io/badge/network-testnet-3b82f6" alt="network" />
+  <img src="https://img.shields.io/badge/contract-deployed-10b981" alt="contract" />
+  <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="license" />
+</p>
+
+<p align="center"><b>Live demo → <a href="https://stellar-receipt.vercel.app">stellar-receipt.vercel.app</a></b></p>
 
 Off-chain receipts get forged, lost, and disputed. **Stellar Receipt** moves them on-chain: a merchant issues an invoice, the payer settles it with a Stellar wallet, and a Soroban contract emits an immutable receipt that anyone can verify by URL.
+
+<p align="center">
+  <img src="docs/flow.png" alt="How Stellar Receipt works: Issuer → Pending → Payer → Minted → Anyone" width="100%" />
+</p>
 
 ## ✨ Features
 
