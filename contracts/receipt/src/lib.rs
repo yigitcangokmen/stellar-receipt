@@ -44,4 +44,52 @@ pub enum Error {
 pub struct ReceiptContract;
 
 #[contractimpl]
-impl ReceiptContract {}
+impl ReceiptContract {
+    /// Satıcı yeni bir fatura oluşturur. Fatura id'sini döner.
+    pub fn create_invoice(
+        env: Env,
+        merchant: Address,
+        token: Address,
+        amount: i128,
+        memo: String,
+    ) -> Result<u64, Error> {
+        merchant.require_auth();
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let id = env
+            .storage()
+            .instance()
+            .get(&DataKey::Counter)
+            .unwrap_or(0u64)
+            + 1;
+        env.storage().instance().set(&DataKey::Counter, &id);
+
+        let invoice = Invoice {
+            id,
+            merchant: merchant.clone(),
+            payer: None,
+            token,
+            amount,
+            memo,
+            status: Status::Pending,
+            created_at: env.ledger().timestamp(),
+            paid_at: 0,
+        };
+        env.storage().persistent().set(&DataKey::Invoice(id), &invoice);
+
+        // Satıcıya ait fatura indeksine ekle (listeleme için).
+        let mut ids: Vec<u64> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Merchant(merchant.clone()))
+            .unwrap_or(Vec::new(&env));
+        ids.push_back(id);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Merchant(merchant), &ids);
+
+        Ok(id)
+    }
+}
