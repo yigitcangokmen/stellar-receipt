@@ -166,3 +166,5 @@ impl ReceiptContract {
             .unwrap_or(Vec::new(&env))
     }
 }
+
+mod test;
