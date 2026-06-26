@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, token, Address, Env, String, Vec};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, symbol_short, token, Address, Env, String, Vec};
 
 /// Fatura/makbuz durumu.
 #[contracttype]
@@ -130,6 +130,10 @@ impl ReceiptContract {
             &invoice.merchant,
             &invoice.amount,
         );
+
+        // Ödeme event'i — RPC getEvents ile bu ödemeyi yapan tx'in hash'i çekilebilir.
+        env.events()
+            .publish((symbol_short!("paid"), invoice_id), payer);
 
         Ok(())
     }
