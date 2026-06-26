@@ -92,4 +92,45 @@ impl ReceiptContract {
 
         Ok(id)
     }
+
+    /// Bir faturayı/makbuzu id ile getirir (doğrulama için herkese açık).
+    pub fn get_invoice(env: Env, invoice_id: u64) -> Result<Invoice, Error> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Invoice(invoice_id))
+            .ok_or(Error::NotFound)
+    }
+
+    /// Ödeyen faturayı öder: token transferi yapılır ve kayıt PAID olur (makbuz).
+    pub fn pay_invoice(env: Env, invoice_id: u64, payer: Address) -> Result<(), Error> {
+        payer.require_auth();
+        let mut invoice: Invoice = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Invoice(invoice_id))
+            .ok_or(Error::NotFound)?;
+
+        if invoice.status != Status::Pending {
+            return Err(Error::NotPending);
+        }
+
+        // Checks-effects-interactions: önce state'i güncelle (effect), SONRA transfer (interaction).
+        // Böylece kötü niyetli bir token reentrancy ile çift ödeme yaptıramaz. Transfer
+        // başarısız olursa Soroban tx'i atomik olduğundan tüm değişiklikler geri alınır.
+        invoice.payer = Some(payer.clone());
+        invoice.status = Status::Paid;
+        invoice.paid_at = env.ledger().timestamp();
+        env.storage()
+            .persistent()
+            .set(&DataKey::Invoice(invoice_id), &invoice);
+
+        // Token'ı ödeyenden satıcıya aktar. XLM ve USDC ikisi de SAC adresi.
+        token::Client::new(&env, &invoice.token).transfer(
+            &payer,
+            &invoice.merchant,
+            &invoice.amount,
+        );
+
+        Ok(())
+    }
 }
