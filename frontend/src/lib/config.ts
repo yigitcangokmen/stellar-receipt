@@ -7,6 +7,7 @@ export const NETWORK = {
   // o an sağlıklı olan ilk endpoint'e otomatik düşmek için sıralı yedek listesi.
   rpcUrls: [
     "https://soroban-testnet.stellar.org",
+    "https://soroban-rpc.testnet.stellar.gateway.fm",
     "https://rpc.ankr.com/stellar_testnet_soroban",
   ],
   contractId: "CDAGNVYOHSVYWMTXFDMFJ5VI36S2GKCQNGDRPMDAD7EDYXE3REG72YSU",
