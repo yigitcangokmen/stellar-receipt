@@ -133,4 +133,32 @@ impl ReceiptContract {
 
         Ok(())
     }
+
+    /// Satıcı, ödenmemiş bir faturayı iptal edebilir.
+    pub fn cancel_invoice(env: Env, invoice_id: u64) -> Result<(), Error> {
+        let mut invoice: Invoice = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Invoice(invoice_id))
+            .ok_or(Error::NotFound)?;
+
+        invoice.merchant.require_auth();
+        if invoice.status != Status::Pending {
+            return Err(Error::NotPending);
+        }
+
+        invoice.status = Status::Cancelled;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Invoice(invoice_id), &invoice);
+        Ok(())
+    }
+
+    /// Bir satıcının tüm fatura id'lerini döner.
+    pub fn list_by_merchant(env: Env, merchant: Address) -> Vec<u64> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Merchant(merchant))
+            .unwrap_or(Vec::new(&env))
+    }
 }
