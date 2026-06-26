@@ -3,6 +3,12 @@ export const NETWORK = {
   passphrase: "Test SDF Network ; September 2015",
   // Frontend tarayıcıda çalıştığı için resmi endpoint (Ankr free 429 rate-limit yiyordu).
   rpcUrl: "https://soroban-testnet.stellar.org",
+  // Resmi RPC ara ara ledger'ı geri kaldığında (latency >30s) onay poll'u takılıyor;
+  // o an sağlıklı olan ilk endpoint'e otomatik düşmek için sıralı yedek listesi.
+  rpcUrls: [
+    "https://soroban-testnet.stellar.org",
+    "https://rpc.ankr.com/stellar_testnet_soroban",
+  ],
   contractId: "CDAGNVYOHSVYWMTXFDMFJ5VI36S2GKCQNGDRPMDAD7EDYXE3REG72YSU",
 } as const;
 

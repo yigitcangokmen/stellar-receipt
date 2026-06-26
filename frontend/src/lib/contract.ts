@@ -13,7 +13,7 @@ export type { Invoice };
  */
 export async function getPaymentTxHash(invoiceId: bigint): Promise<string | undefined> {
   try {
-    const server = new rpc.Server(NETWORK.rpcUrl);
+    const server = new rpc.Server(await pickRpc());
     const latest = await server.getLatestLedger();
     const topic = [
       nativeToScVal("paid", { type: "symbol" }).toXDR("base64"),
@@ -57,20 +57,43 @@ export async function getPaymentTxHash(invoiceId: bigint): Promise<string | unde
   }
 }
 
-function readClient(): Client {
+/**
+ * Sağlıklı RPC seçer: resmi endpoint geri kaldığında (getHealth hata/unhealthy)
+ * listedeki bir sonrakine düşer. Seçim 20sn cache'lenir ki her çağrıda yoklanmasın.
+ */
+let rpcCache: { url: string; at: number } | null = null;
+
+async function pickRpc(): Promise<string> {
+  if (rpcCache && Date.now() - rpcCache.at < 20000) return rpcCache.url;
+  for (const url of NETWORK.rpcUrls) {
+    try {
+      const h = await new rpc.Server(url).getHealth();
+      if (h.status === "healthy") {
+        rpcCache = { url, at: Date.now() };
+        return url;
+      }
+    } catch {
+      /* bu endpoint sağlıksız/erişilemez — sıradakini dene */
+    }
+  }
+  rpcCache = null;
+  return NETWORK.rpcUrls[0]; // hepsi sağlıksızsa yine de primary'yle dene
+}
+
+async function readClient(): Promise<Client> {
   return new Client({
     contractId: NETWORK.contractId,
     networkPassphrase: NETWORK.passphrase,
-    rpcUrl: NETWORK.rpcUrl,
+    rpcUrl: await pickRpc(),
     publicKey: READ_SOURCE,
   });
 }
 
-function writeClient(publicKey: string): Client {
+async function writeClient(publicKey: string): Promise<Client> {
   return new Client({
     contractId: NETWORK.contractId,
     networkPassphrase: NETWORK.passphrase,
-    rpcUrl: NETWORK.rpcUrl,
+    rpcUrl: await pickRpc(),
     publicKey,
     signTransaction: (xdr) => signTransaction(xdr, { address: publicKey }),
   });
@@ -100,7 +123,7 @@ export async function createInvoice(
   amount: bigint,
   memo: string,
 ): Promise<bigint> {
-  const tx = await writeClient(publicKey).create_invoice({
+  const tx = await (await writeClient(publicKey)).create_invoice({
     merchant: publicKey,
     token,
     amount,
@@ -114,7 +137,7 @@ export async function payInvoice(
   publicKey: string,
   invoiceId: bigint,
 ): Promise<{ ledger?: number; hash?: string }> {
-  const tx = await writeClient(publicKey).pay_invoice({
+  const tx = await (await writeClient(publicKey)).pay_invoice({
     invoice_id: invoiceId,
     payer: publicKey,
   });
@@ -133,7 +156,7 @@ export async function payInvoiceOptimistic(
   publicKey: string,
   invoiceId: bigint,
 ): Promise<{ hash: string; confirm: () => Promise<void> }> {
-  const tx = await writeClient(publicKey).pay_invoice({
+  const tx = await (await writeClient(publicKey)).pay_invoice({
     invoice_id: invoiceId,
     payer: publicKey,
   });
@@ -142,7 +165,7 @@ export async function payInvoiceOptimistic(
   if (!signed) throw new Error("İmzalama başarısız");
   const hash = signed.hash().toString("hex");
 
-  const server = new rpc.Server(NETWORK.rpcUrl);
+  const server = new rpc.Server(await pickRpc());
   const sent = await server.sendTransaction(signed);
   const sendStatus = String(sent.status);
   if (sendStatus === "ERROR" || sendStatus === "TRY_AGAIN_LATER") {
@@ -164,7 +187,7 @@ export async function payInvoiceOptimistic(
 }
 
 export async function cancelInvoice(publicKey: string, invoiceId: bigint): Promise<void> {
-  const tx = await writeClient(publicKey).cancel_invoice({ invoice_id: invoiceId });
+  const tx = await (await writeClient(publicKey)).cancel_invoice({ invoice_id: invoiceId });
   const sent = await tx.signAndSend();
   sent.result.unwrap();
 }
@@ -172,11 +195,11 @@ export async function cancelInvoice(publicKey: string, invoiceId: bigint): Promi
 // ---- Okuma işlemleri (cüzdan gerekmez) ----
 
 export async function getInvoice(invoiceId: bigint): Promise<Invoice> {
-  const tx = await readClient().get_invoice({ invoice_id: invoiceId });
+  const tx = await (await readClient()).get_invoice({ invoice_id: invoiceId });
   return tx.result.unwrap();
 }
 
 export async function listByMerchant(merchant: string): Promise<bigint[]> {
-  const tx = await readClient().list_by_merchant({ merchant });
+  const tx = await (await readClient()).list_by_merchant({ merchant });
   return tx.result;
 }
